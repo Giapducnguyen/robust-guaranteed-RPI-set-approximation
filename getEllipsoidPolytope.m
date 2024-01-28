@@ -1,4 +1,4 @@
-function Fk_ebox = getEllipsoidPolytope(n_iter, scaleRatio, n_facet, set_Ek)
+function Fk_ebox = getEllipsoidPolytope(n_iter, scaleRatio, n_facet, set_Ek, maxSegment)
 
 %% Ellipsoid-based outer box
 [X_elp, c_elp] = minve(set_Ek.V);
@@ -23,7 +23,7 @@ for k = 1: n_iter
             n1 = size(elpBox.V,1);
             for ii = 1 : 1 : n1-1
                 for jj = n1 : -1 : ii + 1
-                    for mm = 2:3 %3
+                    for mm = 2:maxSegment % 7 % 3
                         for nn = 1:mm-1
                             elpBox_vtx = [elpBox_vtx;...
                                 (elpBox.V(ii,:) - elpBox.V(jj,:)).*(nn/mm) + elpBox.V(jj,:)];
@@ -43,9 +43,6 @@ for k = 1: n_iter
                 end
             end
             elpBox_vtx = aa;
-        % else
-        %     elpBox_vtx = [elpBox_vtx; ...
-        %                             (elpBox.V(ii,:) - elpBox.V(jj,:))./2 + elpBox.V(jj,:)];
         end
         
         %}
@@ -92,7 +89,7 @@ for k = 1: n_iter
                     elpBox = Fk_temp;
                     backup_polytope = elpBox;
                 else
-                    break; %continue
+                    continue
                 end
                 
             % end

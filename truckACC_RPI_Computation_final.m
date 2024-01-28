@@ -3,12 +3,16 @@ close all; clear; clc;
 
 %% Design Parameters
 
-n_facet = 80;
-scaleRatio = [0.8; 0.65; 0.5; 0.5];
-nVR_iter = 2;
+n_facet = 50;                           % number-of-facet threshold at which the approximation algorithm is activated
+scaleRatio = [0.5; 0.5];               % hyperplane-location parameter (where to put the hyperplane)
+nVR_maxIter = 1;                        % maximum number of volume reduction iterations
+maxSegment = 7;                         % maximum segments of the line connecting a vertex and its projection on set Ek
+
+% Best combination so far: 50 - 0.65 - 1 - 7
 
 % Disturbance observer gain
-l1 = 4.5; %4.5;
+l1 = 4.5;       %4.5;
+L = [0, l1, 0];
 
 %% Time Data
 Ts = 0.1;                   % (s) sampling time
@@ -56,9 +60,6 @@ a_max = 0.6;            % (m/s^2) maximum acceleration
 
 %% RPI SET of Disturbance Estimation Error
 
-% Disturbance observer gain
-L = [0, l1, 0];
-
 % Acceleration increment set
 delta_ap_min = -0.1;
 delta_ap_max = 0.01;
@@ -92,7 +93,7 @@ if ~DO_RPI_outerApprox
 else
     
     epsilon1 = 5e-5;
-    [s1,set_E1] = getRPIOuterApprox(epsilon1,A_L,set_delta_d,n_facet,scaleRatio,nVR_iter);
+    [s1,set_E1] = getRPIOuterApprox(epsilon1,A_L,set_delta_d,n_facet,scaleRatio,nVR_maxIter,maxSegment);
     
 end
 set_D = set_E1;
@@ -147,7 +148,7 @@ if ~sys_RPI_outerApprox
 else
     timeSetE = tic;
     epsilon2 = 1e-4;
-    [s2,set_E2] = getRPIOuterApprox(epsilon2,Phid_cl,set_W,n_facet,scaleRatio,nVR_iter);
+    [s2,set_E2] = getRPIOuterApprox(epsilon2,Phid_cl,set_W,n_facet,scaleRatio,nVR_maxIter,maxSegment);
     comptime = toc(timeSetE);
 end
 set_X_tilde = set_E2;
@@ -205,7 +206,7 @@ end
 end
 
 %% Function helper 1:
-function [s,Fw_alpha] = getRPIOuterApprox(epsilon,Ak,set_W,n_facet,scaleRatio,nVR_iter)
+function [s,Fw_alpha] = getRPIOuterApprox(epsilon,Ak,set_W,n_facet,scaleRatio,nVR_iter,maxSegment)
 
 [nx,~] = size(Ak);
 Ms = 1000;
@@ -230,9 +231,13 @@ for i = 1:s-1
     Fw = Fw + set_temp;
     Fw.minHRep(); Fw.minVRep();
     fprintf('iter %d / %d,  number of facets: %d \n',i,s, size(Fw.getFacet(),1));
+
+    % If the number of facets of the current set > threshold
+    % Proceed to approximate it
+
     if size(Fw.getFacet(),1) > n_facet
         % Ellipsoid-based polytope
-        Fk_ebox = getEllipsoidPolytope(nVR_iter, scaleRatio, n_facet, Fw);
+        Fk_ebox = getEllipsoidPolytope(nVR_iter, scaleRatio, n_facet, Fw, maxSegment);
         
         % Extremum-based outer box
         Fk_obox = getExtremumOuterBox(Fw);
